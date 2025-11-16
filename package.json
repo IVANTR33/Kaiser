@@ -1,0 +1,20 @@
+{
+  "name": "discord-bot-precios",
+  "version": "1.0.0",
+  "description": "Bot con sistema de embeds dinámicos para precios y ayuda.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "embeds",
+    "discord.js"
+  ],
+  "author": "Ivantree9096",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.24.2"
+  }
+}
