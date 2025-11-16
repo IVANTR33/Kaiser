@@ -6,8 +6,9 @@ const {
 const fs = require('fs');
 const path = require('path');
 
-// Definición de la ruta del archivo de guardado (una carpeta arriba, en /data)
-const DATA_FILE = path.join(__dirname, '..', 'data', 'precios_data.json'); 
+// Definición de la ruta del archivo de guardado 
+const DATA_FOLDER = path.join(__dirname, '..', 'data'); // Ruta solo de la carpeta
+const DATA_FILE = path.join(DATA_FOLDER, 'precios_data.json'); // Ruta del archivo
 
 // --- DATOS GLOBALES Y ESTADO ---
 // Almacena las sesiones de creación activas (en memoria) por ID de usuario
@@ -186,8 +187,6 @@ module.exports = {
 
         collector.on('collect', async i => {
             
-            // NO DEFERRIR AQUÍ. La deferral debe ir DENTRO de cada case que lo necesite (excepto embed_edit).
-
             const session = creationSessions.get(userId);
             if (!session) return i.reply({ content: 'Sesión expirada.', ephemeral: true });
 
@@ -196,12 +195,11 @@ module.exports = {
             switch (i.customId) {
                 
                 case 'embed_edit':
-                    // showModal es la respuesta directa, no aplazamos.
                     await showEditModal(i);
                     break;
                 
                 case 'embed_delete':
-                    await i.deferUpdate(); // Aplazamos para poder editar el mensaje
+                    await i.deferUpdate(); 
                     page.fields.pop();
                     session.status = 'EDITANDO';
                     await session.message.edit({
@@ -211,7 +209,7 @@ module.exports = {
                     break;
                 
                 case 'embed_prev_page':
-                    await i.deferUpdate(); // Aplazamos
+                    await i.deferUpdate(); 
                     session.currentPageIndex--;
                     session.status = 'EDITANDO';
                     await session.message.edit({
@@ -221,7 +219,7 @@ module.exports = {
                     break;
 
                 case 'embed_next_page':
-                    await i.deferUpdate(); // Aplazamos
+                    await i.deferUpdate(); 
                     if (session.currentPageIndex < session.pages.length - 1) {
                         session.currentPageIndex++; 
                     } else {
@@ -236,10 +234,17 @@ module.exports = {
                     break;
 
                 case 'embed_save':
-                    await i.deferUpdate(); // Aplazamos
+                    await i.deferUpdate(); 
                     
-                    // --- LÓGICA DE GUARDADO DE ARCHIVO JSON ---
+                    // --- LÓGICA DE CREACIÓN DE CARPETA Y GUARDADO ---
                     try {
+                        // 1. Crear la carpeta 'data' si no existe
+                        if (!fs.existsSync(DATA_FOLDER)) {
+                            fs.mkdirSync(DATA_FOLDER, { recursive: true });
+                            console.log('✅ Carpeta "data/" creada exitosamente.');
+                        }
+                        
+                        // 2. Guardar el archivo JSON
                         const dataToSave = JSON.stringify(session.pages, null, 2);
                         fs.writeFileSync(DATA_FILE, dataToSave);
                         session.status = 'GUARDADO';
@@ -251,10 +256,10 @@ module.exports = {
                         });
 
                     } catch (error) {
-                        console.error('Error al guardar los datos:', error);
+                        console.error('Error al guardar los datos o crear la carpeta:', error);
                         session.status = 'EDITANDO';
                         await session.message.edit({
-                            content: `❌ **Error al guardar los datos.** Verifica los permisos de escritura en la carpeta \`data/\`.`,
+                            content: `❌ **Error al guardar los datos.** Verifica los permisos de escritura.`,
                             embeds: [buildPreviewEmbed(userId, i.guild.name)],
                             components: [buildActionRow(session)]
                         });
@@ -262,7 +267,7 @@ module.exports = {
                     break;
 
                 case 'embed_close':
-                    await i.deferUpdate(); // Aplazamos
+                    await i.deferUpdate(); 
                     await i.message.edit({
                         content: '🚫 Creador cerrado. Usa `!create` para iniciar una nueva sesión.',
                         embeds: [],
